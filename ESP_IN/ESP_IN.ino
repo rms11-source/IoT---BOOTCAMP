@@ -145,27 +145,27 @@ void loop() {
     char buffer[256];
      
     //Publishes Temperature and Humidity values    
-    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", h1 , 'h1', "sensor1");
+    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", h1 , 'h', "sensor1");
 
     client.publish("home/datatopic", buffer);
         
     Serial.println(buffer);
     
-    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", t1 , 't1', "sensor1");
-
-
-    client.publish("home/datatopic", buffer);
-        
-    Serial.println(buffer);
-    
-    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", t2 , 't2', "sensor2");
+    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", t1 , 't', "sensor1");
 
 
     client.publish("home/datatopic", buffer);
         
     Serial.println(buffer);
     
-    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", h2 , 'h2', "sensor2");
+    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", t2 , 't', "sensor2");
+
+
+    client.publish("home/datatopic", buffer);
+        
+    Serial.println(buffer);
+    
+    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", h2 , 'h', "sensor2");
 
 
     client.publish("home/datatopic", buffer);
