@@ -1,8 +1,14 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <DHT.h>
+#include <OneWire.h>
+#include <DS18B20.h>
+#include <DallasTemperature.h>
 
-#define DHT1_PIN 16
+#define DHT_PIN 16   
+
+OneWire oneWire(17);
+DallasTemperature t(&oneWire);
 
 #define DHTTYPE DHT11
 
@@ -13,11 +19,12 @@ const char* mqtt_server = "192.168.1.101";
 const char* topic = "home/datatopic";
    
 // Initializes the espClient
-WiFiClient espClient;
-PubSubClient client(espClient);
+WiFiClient ESP_IN;
+PubSubClient client(ESP_OUT);
 
-DHT sensor1(DHT1_PIN, DHTTYPE);
+DHT sensor1(DHT_PIN, DHTTYPE);
 
+// Timers auxiliar variables
 long now = millis();
 long lastMeasure = 0;
 
@@ -57,7 +64,7 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect("ESP_OUT")) {
+    if (client.connect("ESP_IN")) {
       Serial.println("connected");  
       // Subscribe or resubscribe to a topic
     } else {
@@ -72,8 +79,9 @@ void reconnect() {
 
 void setup() {
   sensor1.begin();
-
-    Serial.begin(115200);
+  
+  
+  Serial.begin(115200);
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
@@ -86,40 +94,44 @@ void loop() {
   }
   if(!client.loop())
 
-    client.connect("ESP_OUT");
+    client.connect("ESP_IN");
     
   now = millis();
   // Publishes new temperature and humidity every 30 seconds
-  if (now - lastMeasure > 10000) {
+  if (now - lastMeasure > 100000) {
     lastMeasure = now;
     float h = sensor1.readHumidity();
-    // Read temperature as Celsius
-    float t = sensor1.readTemperature();
+    t.requestTemperaturesByIndex(0);
 
-    if (isnan(h) || isnan(t)) {
-      Serial.println("Failed to read from DHT sensor1");
+
+    // Check if any reads failed and exit early (to try again).
+    if (isnan(h)) {
+      Serial.println("Failed to read from sensor!");
       return;
     }
 
-static char temperatureTemp[7];
-    dtostrf(t, 6, 2, temperatureTemp);
+    static char temperatureTemp[7];
     
     static char humidityTemp[7];
     dtostrf(h, 6, 2, humidityTemp);
 
-    char buffer[256];
+
+    char buffer[128];
      
     //Publishes Temperature and Humidity values    
-    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", t , 't', "sensor1");
-
-    client.publish("home/datatopic", buffer);
-
-    Serial.println(buffer);
-    
     sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", h , 'h', "sensor1");
-    
+
     client.publish("home/datatopic", buffer);
         
-    Serial.println(buffer); 
+    Serial.println(buffer);
+    
+  
+    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", t , 't', "sensor2");
+
+
+    client.publish("home/datatopic", buffer);
+        
+    Serial.println(buffer);
+    
   }
-}       
+}
