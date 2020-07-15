@@ -1,14 +1,19 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <DHT.h>
-//#include <MQUnifiedsensor.h>
+#include <OneWire.h>
+#include <MQUnifiedsensor.h>
+#include <DS18B20.h>
+#include <DallasTemperature.h>
 
-#define DHT1_PIN 16
-#define DHT2_PIN 17     
-//#define MQ2_PIN (A2)
+#define DHT_PIN 16   
+#define MQ2_PIN 18
+
+OneWire oneWire(17);
+DallasTemperature t(&oneWire);
 
 #define DHTTYPE DHT11
-//#define Type  ("MQ-2")
+#define Type  "MQ-2"
 
 const char* ssid = "HOME_Wi-Fi";
 const char* password = "home1112";
@@ -17,12 +22,11 @@ const char* mqtt_server = "192.168.1.101";
 const char* topic = "home/datatopic";
    
 // Initializes the espClient
-WiFiClient espClient;
-PubSubClient client(espClient);
+WiFiClient ESP_IN;
+PubSubClient client(ESP_IN);
 
-DHT sensor1(DHT1_PIN, DHTTYPE);
-DHT sensor2(DHT2_PIN, DHTTYPE);
-//MQ2_PIN sensor3("MQ-2");
+DHT sensor1(DHT_PIN, DHTTYPE);
+int sensor3(MQ2_PIN);
 
 // Timers auxiliar variables
 long now = millis();
@@ -79,8 +83,7 @@ void reconnect() {
 
 void setup() {
   sensor1.begin();
-  sensor2.begin();
-  //sensor3.begin();
+  
   
   Serial.begin(115200);
   setup_wifi();
@@ -99,84 +102,55 @@ void loop() {
     
   now = millis();
   // Publishes new temperature and humidity every 30 seconds
-  if (now - lastMeasure > 10000) {
+  if (now - lastMeasure > 100000) {
     lastMeasure = now;
-    float h1 = sensor1.readHumidity();
-    // Read temperature as Celsius
-    float t1 = sensor1.readTemperature();
-
-    float h2 = sensor2.readHumidity();
-    // Read temperature as Celsius
-    float t2 = sensor2.readTemperature();
+    float h = sensor1.readHumidity();
+    t.requestTemperaturesByIndex(0);
 
 
     // Check if any reads failed and exit early (to try again).
-    if (isnan(h1) || isnan(t1)) {
-      Serial.println("Failed to read from DHT sensor1");
+    if (isnan(h)) {
+      Serial.println("Failed to read from sensor!");
       return;
     }
 
     static char temperatureTemp[7];
-    dtostrf(t1, 6, 2, temperatureTemp);
+    //dtostrf(t, 6, 2, temperatureTemp);
     
     static char humidityTemp[7];
-    dtostrf(h1, 6, 2, humidityTemp);
+    dtostrf(h, 6, 2, humidityTemp);
 
 
-    // Check if any reads failed and exit early (to try again).
-    if (isnan(h2) || isnan(t2)) {
-      Serial.println("Failed to read from DHT sensor2");
-      return;
+    float g = analogRead(A0);
+    if (isnan(g))
+    {
+    Serial.println("Failed to read from MQ-2 sensor!");
+    return;
     }
 
-    static char temperatureTemp1[7];
-    dtostrf(h2, 6, 2, temperatureTemp1);
-    
-    static char humidityTemp1[7];
-    dtostrf(t2, 6, 2, humidityTemp1);
-
-    //float g = analogRead(A0);
-   // if (isnan(g))
-    //{
-    //Serial.println("Failed to read from MQ-5 sensor!");
-   // return;
-   // }
-
-    char buffer[256];
+    char buffer[128];
      
     //Publishes Temperature and Humidity values    
-    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", h1 , 'h', "sensor1");
+    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", h , 'h', "sensor1");
 
     client.publish("home/datatopic", buffer);
         
     Serial.println(buffer);
     
-    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", t1 , 't', "sensor1");
-
-
-    client.publish("home/datatopic", buffer);
-        
-    Serial.println(buffer);
-    
-    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", t2 , 't', "sensor2");
+  
+    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", t , 't', "sensor2");
 
 
     client.publish("home/datatopic", buffer);
         
     Serial.println(buffer);
     
-    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", h2 , 'h', "sensor2");
-
-
+    
+    sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", g , 'g', "sensor3");
+    
     client.publish("home/datatopic", buffer);
         
     Serial.println(buffer);
-    
-    //sprintf(buffer, "{\"v\": %.2f, \"t\": \"%c\", \"id\": \"%s\"}", g , 'g', "sensor3");
-    
-    //client.publish("home/datatopic", buffer);
-        
-    //Serial.println(buffer);
     
   }
 }
